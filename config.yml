@@ -1,0 +1,133 @@
+# 监听地址及端口
+# 默认为 `:8089`，即在所有接口(`0.0.0.0`)上监听 `8089` 端口。如果要监听某个特定的接口，则可传入 `<接口 ip>:<端口号>`
+listen: :8089
+
+# 数据目录
+# Go-drive 所有的数据均在该目录下，如果使用 Docker 等容器运行，则需将该路径映射至容器外，否则会导致数据丢失。
+# - `lang` 国际化文本
+# - `local` 当 `-f` 参数未启用时，`本地文件` 的映射将始终被限制在该目录中
+# - `sessions` 用户会话
+# - `temp` 临时目录
+# - `thumbnails` 文件的缩略图缓存
+# - `upload_temp` 分片上传的临时文件
+# - `data.db` SQLite 数据库文件
+data-dir: ./
+
+# 国际化文件位置
+# 默认为 `./lang`
+lang-dir: ./lang
+# 默认语言
+# 默认为 `en-US`，当用户浏览器的语言不受支持时，将回退到该语言
+default-lang: en-US
+
+# 当前端要求代理某文件的下载时，所支持的最大的文件大小
+# 默认为 `1048576` ，即 1MB
+proxy-max-size: 1048576 # 1M
+
+# 并发任务数
+# 默认为 `100`，为复制、移动、删除等异步任务的并发数
+max-concurrent-task: 100
+
+# 禁用`本地文件` 映射的路径限制
+free-fs: false
+
+thumbnail:
+  # 缩略图缓存有效期
+  # 默认为 `720h`，即 30 天。当文件发生变化时（通过文件的上次修改时间和大小决定），缓存也会失效
+  ttl: 720h
+  #生成缩略图的并发数
+  # 默认为 (CPU 数量 / 2)，目前图片的缩略图生成比较耗性能和内存。
+  #concurrent: 4
+
+  # 缩略图生成器。 目前支持三种类型: image, text, shell
+  # file-types 指这个生成器支持的文件扩展名
+  handlers:
+    # image: 内嵌的图片缩略图生成(只支持 jpg, png, gif)
+    # 这个目前性能不佳，不推荐使用
+    - type: image
+      file-types: jpg,jpeg,png,gif
+      #config:
+      #  # 最大支持的文件大小
+      #  max-size: 33554432 # 32MB
+      #  # 最大支持的图片大小 (宽 * 高)
+      #  max-pixels: 36000000 # 6000*6000
+      #  # 生成的缩略图宽度(像素)
+      #  size: 220
+      #  # 缩略图图片质量，1 ~ 100，越大质量越好
+      #  quality: 50
+
+    # text: 内嵌的针对文本文件的生成器
+    # 读取文件文件的部分内容来生成一个 svg 图片
+    - type: text
+      file-types: txt,md,xml,html,css,scss,js,json,jsx,properties,yml,yaml,ini,c,h,cpp,go,java,kt,gradle,ps1
+      #config:
+      #  font-size: 12
+      #  # 生成的缩略图宽度(像素)
+      #  size: 220
+      #  # 最多读取的文件长度
+      #  max-read: 8192
+      #  # 生成的图片的 padding
+      #  padding: 10
+
+    # shell: 通过执行外部命令来生成缩略图，比如 ffmpeg
+    # 文件的内容会被写入标准输入(stdin)
+    # 生成的缩略图应该写出到标准输出(stdout)
+    # 如果命令返回非 0 状态，表示生成失败
+    # 一些相关的环境变量会被设置:
+    #
+    # GO_DRIVE_ENTRY_TYPE: file|dir
+    # GO_DRIVE_ENTRY_PATH: 引号括起来的文件路径(不是本地文件系统路径)
+    # GO_DRIVE_ENTRY_NAME: 引号括起来的文件名
+    # GO_DRIVE_ENTRY_SIZE: 文件大小
+    # GO_DRIVE_ENTRY_MOD_TIME: 文件修改时间，毫秒时间戳
+    # GO_DRIVE_ENTRY_READABLE: true|false 这个文件是否可读
+    #- type: shell
+    #  file-types: mp4,avi
+    #  config:
+    #    # 生成缩略图的命令
+    #    # 比如，下面的命令调用 ffmpeg 为视频生成缩略图
+    #    shell: ffmpeg.exe -hide_banner -loglevel error -i - -frames:v 1 -vf scale=220:-1 -f mjpeg -
+    #    # 输出的缩略图的 mime type
+    #    mime-type: image/jpeg
+    #    # 输出的文件名
+    #    filename: image.jpg
+    #    # 如果设置为 false，那么文件内容不会写入到 stdin
+    #    write-content: true
+    #    # 最大支持的文件大小，如果 <= 0，则没有限制
+    #    max-size: -1
+    #    # 生成缩略图的超时时间，如果 <= 0, 则没有限制，默认为永不超时
+    #    timeout: 10m
+
+auth:
+  # 用户 Session Token 有效时间
+  # 默认为 `2h`，两小时
+  validity: 2h
+  # 当用户与系统交互时，自动刷新 Token 有效期
+  auto-refresh: true
+
+# WebDAV 访问配置
+web-dav:
+  enabled: true
+  prefix: /dav
+  # 是否允许匿名访问
+  allow-anonymous: false
+
+# 文件搜索配置
+search:
+  # 是否启用搜索
+  enabled: true
+  # 搜索索引类型：目前仅支持 bleve
+  type: bleve
+
+# API base 路径
+# 传递给前端的参数，通常情况下，不需要指定
+# 当 go-drive 在反向代理(如 Nginx)后面且在子路径下时，需要指定
+# 请注意：由于前端的 PWA 缓存问题，此参数可能不会立即生效
+api-path: ""
+
+# 静态文件路径
+# 通常为前端资源文件位置，默认为 `./web`
+web-dir: ./web
+
+# OAuth 认证时的重定向 URL
+oauth-redirect-uri: https://go-drive.top/oauth_callback
